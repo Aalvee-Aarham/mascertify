@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Shield, Zap, QrCode, Globe, ArrowRight, CheckCircle, Lock, Award } from 'lucide-react'
 
 const features = [
-  { icon: Shield, title: 'Tamper-proof Certificates', desc: 'Every certificate is cryptographically signed with a unique ID that cannot be forged or altered.' },
+  { icon: Shield, title: 'Tamper-proof Certificates', desc: 'Every certificate is cryptographically signed with a unique ID that cannot be altered.' },
   { icon: Zap, title: 'Instant Verification', desc: 'Employers and institutions can verify any certificate in seconds — no calls, no emails.' },
   { icon: QrCode, title: 'QR Code Validation', desc: 'Each certificate carries a scannable QR code that links directly to its verification page.' },
   { icon: Globe, title: 'Globally Accessible', desc: 'Cloud-hosted and always online. Verify from anywhere in the world, anytime.' },
