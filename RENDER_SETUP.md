@@ -47,7 +47,7 @@ Go to [https://render.com/dashboard](https://render.com/dashboard)
 2. Connect GitHub repo
 3. Configure:
    - **Name:** `mascertify`
-   - **Build Command:** `cd client && npm install && npx vite build`
+   - **Build Command:** `cd client && npm install && npm run build`
    - **Publish Directory:** `client/dist`
 
 4. **Add Environment Variable:**
