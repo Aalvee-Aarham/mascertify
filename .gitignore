@@ -39,5 +39,6 @@ coverage/
 # Render
 .render/
 
-# Development
-.env.example is NOT ignored - it should be committed
+# Note: .env and .env.local are ignored (secrets, not committed)
+# BUT .env.example files ARE committed as templates for deployment
+

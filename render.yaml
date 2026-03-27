@@ -5,9 +5,12 @@ services:
     runtime: node
     startCommand: cd server && node index.js
     buildCommand: cd server && npm install
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 5000
       - key: MONGO_URI
         scope: build
       - key: JWT_SECRET
@@ -15,24 +18,13 @@ services:
       - key: JWT_EXPIRE
         value: 7d
       - key: CLIENT_URL
-        fromDatabase:
-          name: mascertify-client
-          property: url
-    routes:
-      - path: /api
-        destination: /api
+        value: https://mascertify.onrender.com
 
-  # Frontend Client
-  - type: web
-    name: mascertify-client
-    runtime: node
+  # Frontend Static Site
+  - type: static
+    name: mascertify
     buildCommand: cd client && npm install && npm run build
-    startCommand: cd client && npx serve -s dist -l 3000
+    staticPublishPath: client/dist
     envVars:
       - key: VITE_API_URL
         value: https://mascertify-api.onrender.com
-
-databases:
-  - name: mascertify-db
-    databaseName: mascertify
-    user: mascertify_user
