@@ -1,0 +1,38 @@
+services:
+  # Backend API Server
+  - type: web
+    name: mascertify-api
+    runtime: node
+    startCommand: cd server && node index.js
+    buildCommand: cd server && npm install
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        scope: build
+      - key: JWT_SECRET
+        scope: build
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: CLIENT_URL
+        fromDatabase:
+          name: mascertify-client
+          property: url
+    routes:
+      - path: /api
+        destination: /api
+
+  # Frontend Client
+  - type: web
+    name: mascertify-client
+    runtime: node
+    buildCommand: cd client && npm install && npm run build
+    startCommand: cd client && npx serve -s dist -l 3000
+    envVars:
+      - key: VITE_API_URL
+        value: https://mascertify-api.onrender.com
+
+databases:
+  - name: mascertify-db
+    databaseName: mascertify
+    user: mascertify_user

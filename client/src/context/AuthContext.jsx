@@ -3,6 +3,10 @@ import axios from 'axios'
 
 const AuthContext = createContext(null)
 
+// Configure axios base URL for production/development
+const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+axios.defaults.baseURL = apiBaseUrl
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [organization, setOrganization] = useState(null)
