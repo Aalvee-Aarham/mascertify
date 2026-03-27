@@ -1,0 +1,10 @@
+{
+  "name": "mascertify",
+  "version": "1.0.0",
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "setup": "cp server/.env.example server/.env && echo '✅ Copied .env — now add your DB password to server/.env'"
+  }
+}
