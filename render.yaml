@@ -23,7 +23,7 @@ services:
   # Frontend Static Site
   - type: static
     name: mascertify
-    buildCommand: cd client && npm install && npm run build
+    buildCommand: cd client && npm install && npx vite build
     staticPublishPath: client/dist
     envVars:
       - key: VITE_API_URL
