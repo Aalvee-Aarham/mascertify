@@ -23,10 +23,17 @@ import Discover from './pages/Discover'
 import DiscoverDetail from './pages/DiscoverDetail'
 
 const ProtectedRoute = ({ children, orgOnly = false }) => {
-  const { user, loading } = useAuth()
+  const { user, loading, networkError } = useAuth()
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+  if (!user && networkError) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg-primary)' }}>
+      <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <p className="text-gray-400 text-sm font-medium">Connecting to server — this may take a moment…</p>
+      <p className="text-gray-600 text-xs">Render free tier may be waking up</p>
     </div>
   )
   if (!user) return <Navigate to="/login" replace />

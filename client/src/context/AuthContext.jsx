@@ -23,16 +23,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  const fetchMe = async () => {
+  const [networkError, setNetworkError] = useState(false)
+
+  const fetchMe = async (isRetry = false) => {
     try {
       const res = await axios.get('/api/auth/me')
       setUser(res.data.user)
       setOrganization(res.data.organization)
       setOrganizationApproval(res.data.organizationApproval ?? null)
-    } catch {
-      localStorage.removeItem('masc_token')
-      delete axios.defaults.headers.common['Authorization']
-      setOrganizationApproval(null)
+      setNetworkError(false)
+    } catch (err) {
+      // Only clear session on 401 (invalid/expired token).
+      if (err.response?.status === 401) {
+        localStorage.removeItem('masc_token')
+        delete axios.defaults.headers.common['Authorization']
+        setOrganizationApproval(null)
+        setNetworkError(false)
+      } else {
+        // Network error (e.g. Render backend sleeping) — keep token, retry after delay
+        setNetworkError(true)
+        if (!isRetry) {
+          setTimeout(() => fetchMe(true), 5000)
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -89,6 +102,7 @@ export const AuthProvider = ({ children }) => {
       organization,
       organizationApproval,
       loading,
+      networkError,
       login,
       registerUser,
       registerOrg,
