@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import CertificateTemplate from '../components/CertificateTemplate'
+import ImageUpload from '../components/ImageUpload'
 import { Download, ArrowLeft, Eye, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
@@ -11,14 +12,16 @@ import { jsPDF } from 'jspdf'
 const today = new Date().toISOString().split('T')[0]
 
 export default function CreateCertificate() {
-  const { user, organization } = useAuth()
+  const { user, organization, organizationApproval } = useAuth()
+  const canIssue = user?.role === 'admin' || organizationApproval?.isApproved === true
   const navigate = useNavigate()
   const certRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedCert, setSavedCert] = useState(null)
-  const [showPreview, setShowPreview] = useState(true)
+  const [collections, setCollections] = useState([])
+  const [listings, setListings] = useState([])
 
   const [form, setForm] = useState({
     recipientName: '',
@@ -27,7 +30,23 @@ export default function CreateCertificate() {
     issueDate: today,
     expiryDate: '',
     recipientEmail: '',
+    templateKey: 'minimal',
+    collectionId: '',
+    publishedCourseId: '',
+    orgLogo: organization?.logo || '',
   })
+
+  useEffect(() => {
+    if (organization?.logo && !form.orgLogo) {
+      setForm(f => ({ ...f, orgLogo: organization.logo }))
+    }
+  }, [organization])
+
+  useEffect(() => {
+    if (!user || (user.role !== 'organization' && user.role !== 'admin')) return
+    axios.get('/api/collections').then((r) => setCollections(r.data.collections || [])).catch(() => {})
+    axios.get('/api/org/published-courses').then((r) => setListings(r.data.courses || [])).catch(() => {})
+  }, [user])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -35,17 +54,28 @@ export default function CreateCertificate() {
     ...form,
     certificateId: savedCert?.certificateId || 'MASC-PREVIEW',
     orgName: organization?.orgName || user?.name || 'Your Organization',
-    orgLogo: organization?.logo || '',
+    orgLogo: form.orgLogo || organization?.logo || '',
     recipientName: form.recipientName || 'Recipient Name',
     courseName: form.courseName || 'Course / Program Name',
+    templateKey: form.templateKey || 'minimal',
   }
 
   const handleSave = async () => {
+    if (!canIssue) return toast.error('Your organization must be approved before you can issue certificates.')
     if (!form.recipientName || !form.courseName || !form.issueDate)
       return toast.error('Recipient name, course name and issue date are required')
+    
+    if (form.expiryDate && new Date(form.expiryDate) <= new Date(form.issueDate)) {
+      return toast.error('Expiry date must be after the issue date')
+    }
     setSaving(true)
     try {
-      const res = await axios.post('/api/certificates', form)
+      const payload = {
+        ...form,
+        collectionId: form.collectionId || undefined,
+        publishedCourseId: form.publishedCourseId || undefined,
+      }
+      const res = await axios.post('/api/certificates', payload)
       setSavedCert(res.data.certificate)
       setSaved(true)
       toast.success('Certificate created successfully!')
@@ -97,6 +127,16 @@ export default function CreateCertificate() {
           </h1>
         </div>
 
+        {!canIssue && (
+          <div className={`mb-6 rounded-2xl border px-5 py-4 ${organizationApproval?.status === 'rejected' ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+            <p className={`text-sm font-medium ${organizationApproval?.status === 'rejected' ? 'text-red-400' : 'text-amber-400'}`}>
+              {organizationApproval?.status === 'rejected'
+                ? 'Issuing is disabled — organization not approved.'
+                : 'Issuing is disabled until an admin approves your organization.'}
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Form */}
           <div className="space-y-6">
@@ -109,15 +149,28 @@ export default function CreateCertificate() {
                   </label>
                   <input type="text" className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                     placeholder="Full name of recipient" value={form.recipientName}
+                    maxLength={60}
                     onChange={e => set('recipientName', e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Recipient Email</label>
                   <input type="email" className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                     placeholder="recipient@email.com (optional)" value={form.recipientEmail}
+                    maxLength={100}
                     onChange={e => set('recipientEmail', e.target.value)} />
                 </div>
               </div>
+            </div>
+
+            <div className="glass rounded-2xl p-6 border border-gray-800">
+              <h2 className="text-base font-semibold text-white mb-5">Issuer Branding</h2>
+              <ImageUpload
+                label="Organization Logo (Cloudinary)"
+                value={form.orgLogo}
+                onChange={url => set('orgLogo', url)}
+                context="org"
+              />
+              <p className="text-xs text-gray-600 mt-2 italic">This logo will appear in the issued certificate.</p>
             </div>
 
             <div className="glass rounded-2xl p-6 border border-gray-800">
@@ -129,12 +182,14 @@ export default function CreateCertificate() {
                   </label>
                   <input type="text" className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                     placeholder="e.g. Full Stack Web Development" value={form.courseName}
+                    maxLength={100}
                     onChange={e => set('courseName', e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Description</label>
                   <textarea className="input-dark w-full px-4 py-3 rounded-xl text-sm resize-none" rows={2}
                     placeholder="Brief description (optional)" value={form.description}
+                    maxLength={300}
                     onChange={e => set('description', e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -151,13 +206,44 @@ export default function CreateCertificate() {
                       value={form.expiryDate} onChange={e => set('expiryDate', e.target.value)} />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Template</label>
+                  <select className="input-dark w-full px-4 py-3 rounded-xl text-sm" value={form.templateKey}
+                    onChange={e => set('templateKey', e.target.value)}>
+                    <option value="minimal">Modern minimal (blue)</option>
+                    <option value="academic">Academic (gold)</option>
+                    <option value="professional">Professional (navy/gold)</option>
+                    <option value="elegant">Elegant (artistic/serif)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Collection</label>
+                  <select className="input-dark w-full px-4 py-3 rounded-xl text-sm" value={form.collectionId}
+                    onChange={e => set('collectionId', e.target.value)}>
+                    <option value="">None</option>
+                    {collections.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Public course listing (optional)</label>
+                  <select className="input-dark w-full px-4 py-3 rounded-xl text-sm" value={form.publishedCourseId}
+                    onChange={e => set('publishedCourseId', e.target.value)}>
+                    <option value="">None</option>
+                    {listings.map(p => (
+                      <option key={p._id} value={p._id}>{p.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-600 mt-1">Links verifications to this listing for popularity analytics.</p>
+                </div>
               </div>
             </div>
 
             {/* Actions */}
             <div className="flex gap-3">
               {!saved ? (
-                <button onClick={handleSave} disabled={saving}
+                <button onClick={handleSave} disabled={saving || !canIssue}
                   className="btn-primary flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
                   {saving
                     ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</>
@@ -181,7 +267,7 @@ export default function CreateCertificate() {
 
             {saved && (
               <div className="flex gap-3">
-                <button onClick={() => { setSaved(false); setSavedCert(null); setForm({ recipientName: '', courseName: '', description: '', issueDate: today, expiryDate: '', recipientEmail: '' }) }}
+                <button onClick={() => { setSaved(false); setSavedCert(null); setForm({ recipientName: '', courseName: '', description: '', issueDate: today, expiryDate: '', recipientEmail: '', templateKey: 'minimal', collectionId: '', publishedCourseId: '', orgLogo: organization?.logo || '' }) }}
                   className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 border border-gray-700 hover:border-gray-500 transition-all">
                   Create Another
                 </button>
@@ -194,7 +280,7 @@ export default function CreateCertificate() {
           </div>
 
           {/* Preview */}
-          <div>
+          <div className="sticky top-24">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-white flex items-center gap-2">
                 <Eye size={16} className="text-gray-400" /> Live Preview

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import axios from 'axios'
 import CertificateTemplate from '../components/CertificateTemplate'
-import { Download, ArrowLeft, CheckCircle, XCircle, Shield } from 'lucide-react'
+import { Download, ArrowLeft, CheckCircle, XCircle, Shield, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -69,7 +69,23 @@ export default function CertificateDetail() {
     </div>
   )
 
-  const isValid = cert.status === 'active'
+  const status = cert.status
+  const banner =
+    status === 'active'
+      ? { border: 'border-green-500/25 bg-green-500/5', icon: CheckCircle, iconClass: 'text-green-400', title: 'This certificate is valid and authentic', titleClass: 'text-green-400' }
+      : status === 'expired'
+        ? { border: 'border-amber-500/25 bg-amber-500/5', icon: XCircle, iconClass: 'text-amber-400', title: 'This certificate has expired', titleClass: 'text-amber-400' }
+        : { border: 'border-red-500/25 bg-red-500/5', icon: XCircle, iconClass: 'text-red-400', title: `This certificate is ${status}`, titleClass: 'text-red-400' }
+  const BannerIcon = banner.icon
+
+  const apiOrigin = (import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '')
+  const embedSrc = `${apiOrigin}/api/embed/cert/${encodeURIComponent(cert.certificateId)}`
+  const embedCode = `<iframe src="${embedSrc}" width="320" height="90" style="border:0;border-radius:12px" title="MAScertify verification"></iframe>`
+
+  const copyEmbed = () => {
+    navigator.clipboard.writeText(embedCode)
+    toast.success('Embed code copied')
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-16 px-4 noise-bg">
@@ -88,19 +104,24 @@ export default function CertificateDetail() {
         </div>
 
         {/* Validity banner */}
-        <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl border mb-6 animate-slide-up ${isValid ? 'border-green-500/25 bg-green-500/5' : 'border-red-500/25 bg-red-500/5'}`}>
-          {isValid
-            ? <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
-            : <XCircle size={20} className="text-red-400 flex-shrink-0" />}
+        <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl border mb-6 animate-slide-up ${banner.border}`}>
+          <BannerIcon size={20} className={`${banner.iconClass} flex-shrink-0`} />
           <div className="flex-1">
-            <p className={`text-sm font-semibold ${isValid ? 'text-green-400' : 'text-red-400'}`}>
-              {isValid ? 'This certificate is valid and authentic' : `This certificate is ${cert.status}`}
-            </p>
+            <p className={`text-sm font-semibold ${banner.titleClass}`}>{banner.title}</p>
             <p className="text-xs text-gray-500 mt-0.5">Verified by MAScertify · ID: <span className="font-mono">{cert.certificateId}</span></p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <Shield size={13} /> MAScertify
           </div>
+        </div>
+
+        <div className="glass rounded-2xl border border-gray-800 p-4 mb-6">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-widest mb-2">Embeddable verification badge</p>
+          <p className="text-xs text-gray-600 mb-3">Paste on LinkedIn, your site, or portfolio (iframe).</p>
+          <iframe src={embedSrc} width="320" height="90" className="rounded-xl border border-gray-700 bg-gray-900/50 mb-3" title="Verification badge preview" />
+          <button type="button" onClick={copyEmbed} className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300">
+            <Copy size={14} /> Copy iframe HTML
+          </button>
         </div>
 
         {/* Certificate - actual size for PDF, scaled for display */}
@@ -115,7 +136,7 @@ export default function CertificateDetail() {
                 transform: `scale(${Math.min(1, (typeof window !== 'undefined' ? window.innerWidth - 32 : 794) / 794)})`,
               }}>
                 <div ref={certRef}>
-                  <CertificateTemplate cert={cert} />
+                  <CertificateTemplate cert={{ ...cert, templateKey: cert.templateKey || 'minimal' }} />
                 </div>
               </div>
             </div>

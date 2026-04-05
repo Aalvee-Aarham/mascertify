@@ -40,6 +40,10 @@ export default function Navbar() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive('/verify') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
               Verify Certificate
             </Link>
+            <Link to="/discover"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive('/discover') || location.pathname.startsWith('/discover/') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+              Discover
+            </Link>
             {user ? (
               <>
                 <Link to="/dashboard"
@@ -51,6 +55,22 @@ export default function Navbar() {
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive('/dashboard/create') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                     <PlusSquare size={15} /> Issue Certificate
                   </Link>
+                )}
+                {user.role === 'admin' && (
+                  <>
+                    <Link to="/admin/organizations"
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive('/admin/organizations') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                      <Shield size={15} /> Orgs
+                    </Link>
+                    <Link to="/admin/course-listings"
+                      className={`px-3 py-2 rounded-lg text-sm font-medium ${location.pathname.startsWith('/admin/course') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                      Courses
+                    </Link>
+                    <Link to="/admin/audit-logs"
+                      className={`px-3 py-2 rounded-lg text-sm font-medium ${isActive('/admin/audit-logs') ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                      Audit
+                    </Link>
+                  </>
                 )}
                 <div className="w-px h-5 bg-gray-700 mx-2" />
                 <div className="flex items-center gap-3">
@@ -70,8 +90,8 @@ export default function Navbar() {
                   className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all">
                   Sign In
                 </Link>
-                <Link to="/register/organization"
-                  className="btn-primary px-4 py-2 rounded-lg text-sm ml-1">
+                <Link to="/register/user"
+                  className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold ml-1 shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
                   Get Started
                 </Link>
               </>
@@ -95,6 +115,10 @@ export default function Navbar() {
               className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
               Verify Certificate
             </Link>
+            <Link to="/discover" onClick={() => setMenuOpen(false)}
+              className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+              Discover
+            </Link>
             {user ? (
               <>
                 <Link to="/dashboard" onClick={() => setMenuOpen(false)}
@@ -106,6 +130,22 @@ export default function Navbar() {
                     className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
                     Issue Certificate
                   </Link>
+                )}
+                {user.role === 'admin' && (
+                  <>
+                    <Link to="/admin/organizations" onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+                      Admin · Orgs
+                    </Link>
+                    <Link to="/admin/course-listings" onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+                      Admin · Courses
+                    </Link>
+                    <Link to="/admin/audit-logs" onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+                      Admin · Audit
+                    </Link>
+                  </>
                 )}
                 <button onClick={handleLogout}
                   className="w-full text-left px-4 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-all">

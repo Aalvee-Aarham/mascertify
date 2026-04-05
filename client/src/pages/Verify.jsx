@@ -1,15 +1,19 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Search, QrCode, CheckCircle, XCircle, ExternalLink, Camera } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import { Html5Qrcode } from 'html5-qrcode'
+import { parseCertificateIdFromQr } from '../utils/qrCertId'
+
+const QR_READER_ID = 'verify-qr-reader'
 
 export default function Verify() {
   const [certId, setCertId] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [notFound, setNotFound] = useState(false)
-  const [mode, setMode] = useState('text') // 'text' | 'qr'
+  const [mode, setMode] = useState('text')
   const inputRef = useRef(null)
 
   const handleSearch = async (id) => {
@@ -29,6 +33,54 @@ export default function Verify() {
     }
   }
 
+  useEffect(() => {
+    if (mode !== 'qr') return undefined
+
+    const scanner = new Html5Qrcode(QR_READER_ID)
+
+    const verifyById = async (searchId) => {
+      setLoading(true)
+      setResult(null)
+      setNotFound(false)
+      setCertId(searchId)
+      try {
+        const res = await axios.get(`/api/certificates/verify/${searchId}`)
+        setResult(res.data.certificate)
+      } catch (err) {
+        if (err.response?.status === 404) setNotFound(true)
+        else toast.error('Verification failed. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    ;(async () => {
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 260, height: 260 } },
+          (decodedText) => {
+            const parsed = parseCertificateIdFromQr(decodedText)
+            if (!parsed) {
+              toast.error('This QR code is not a MAScertify certificate link')
+              return
+            }
+            scanner.stop().catch(() => {})
+            verifyById(parsed)
+          },
+          () => {}
+        )
+      } catch {
+        toast.error('Camera unavailable. Allow permission, use HTTPS, or enter the certificate ID.')
+      }
+    })()
+
+    return () => {
+      scanner.stop().catch(() => {})
+      scanner.clear().catch(() => {})
+    }
+  }, [mode])
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleSearch()
   }
@@ -36,9 +88,9 @@ export default function Verify() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
 
   const statusConfig = {
-    active:  { color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/20', icon: CheckCircle, label: 'Valid & Active' },
-    revoked: { color: 'text-red-400',   bg: 'bg-red-400/10 border-red-400/20',     icon: XCircle,     label: 'Revoked' },
-    expired: { color: 'text-yellow-400',bg: 'bg-yellow-400/10 border-yellow-400/20',icon: XCircle,    label: 'Expired' },
+    active:  { color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/20', icon: CheckCircle, label: 'Valid & Active', border: 'border-green-500/25', bar: 'bg-green-500/5' },
+    revoked: { color: 'text-red-400',   bg: 'bg-red-400/10 border-red-400/20',     icon: XCircle,     label: 'Revoked', border: 'border-red-500/25', bar: 'bg-red-500/5' },
+    expired: { color: 'text-yellow-400',bg: 'bg-yellow-400/10 border-yellow-400/20',icon: XCircle,    label: 'Expired', border: 'border-yellow-500/25', bar: 'bg-yellow-500/5' },
   }
 
   return (
@@ -47,7 +99,6 @@ export default function Verify() {
         style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.09) 0%, transparent 70%)' }} />
 
       <div className="max-w-2xl mx-auto relative z-10">
-        {/* Header */}
         <div className="text-center mb-10 animate-slide-up">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
             style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(29,78,216,0.2))', border: '1px solid rgba(59,130,246,0.3)' }}>
@@ -59,20 +110,18 @@ export default function Verify() {
           <p className="text-gray-400 text-base">Enter a Certificate ID or scan the QR code to verify authenticity instantly.</p>
         </div>
 
-        {/* Mode toggle */}
         <div className="flex gap-1 p-1 rounded-xl border border-gray-800 mb-6 w-fit mx-auto"
           style={{ background: 'var(--bg-card)' }}>
-          <button onClick={() => setMode('text')}
+          <button type="button" onClick={() => setMode('text')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'text' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-white'}`}>
             <Search size={15} /> Enter ID
           </button>
-          <button onClick={() => setMode('qr')}
+          <button type="button" onClick={() => setMode('qr')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'qr' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-white'}`}>
             <Camera size={15} /> Scan QR
           </button>
         </div>
 
-        {/* Search panel */}
         <div className="glass rounded-2xl p-6 border border-gray-800 mb-6 animate-fade-in">
           {mode === 'text' ? (
             <div>
@@ -89,6 +138,7 @@ export default function Verify() {
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={() => handleSearch()}
                   disabled={loading}
                   className="btn-primary px-6 py-3.5 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap">
@@ -100,27 +150,14 @@ export default function Verify() {
               <p className="text-xs text-gray-600 mt-2">Format: MASC-XXXXXXXX (found on the certificate)</p>
             </div>
           ) : (
-            <div className="text-center py-6">
-              <div className="w-48 h-48 mx-auto rounded-2xl border-2 border-dashed border-blue-500/30 flex flex-col items-center justify-center gap-3 mb-4 relative overflow-hidden"
-                style={{ background: 'rgba(59,130,246,0.04)' }}>
-                {/* Corner markers */}
-                {[['top-2 left-2', 'border-t-2 border-l-2'],['top-2 right-2', 'border-t-2 border-r-2'],['bottom-2 left-2', 'border-b-2 border-l-2'],['bottom-2 right-2', 'border-b-2 border-r-2']].map(([pos, border], i) => (
-                  <div key={i} className={`absolute ${pos} w-5 h-5 ${border} border-blue-400 rounded-sm`} />
-                ))}
-                {/* Scan line animation */}
-                <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent"
-                  style={{ animation: 'scanLine 2s ease-in-out infinite', top: '50%' }} />
-                <Camera size={32} className="text-blue-400/50 relative z-10" />
-                <p className="text-xs text-gray-500 relative z-10">Camera not active in demo</p>
-              </div>
-              <p className="text-sm text-gray-400 mb-3">QR Scanner is available in the mobile app or use the certificate ID instead.</p>
-              <p className="text-xs text-gray-600">The QR code on every certificate links directly to its verification page.</p>
-              <style>{`@keyframes scanLine { 0%,100%{top:20%;opacity:0.3} 50%{top:80%;opacity:1} }`}</style>
+            <div className="py-2">
+              <p className="text-sm text-gray-400 mb-3 text-center">Point your camera at the certificate QR code.</p>
+              <div id={QR_READER_ID} className="w-full min-h-[280px] rounded-xl overflow-hidden bg-black/50 border border-gray-800" />
+              <p className="text-xs text-gray-600 mt-3 text-center">Works on HTTPS or localhost. Stops when a valid certificate is read.</p>
             </div>
           )}
         </div>
 
-        {/* Not found */}
         {notFound && (
           <div className="glass rounded-2xl p-6 border border-red-500/20 animate-fade-in" style={{ background: 'rgba(239,68,68,0.04)' }}>
             <div className="flex items-start gap-4">
@@ -136,14 +173,12 @@ export default function Verify() {
           </div>
         )}
 
-        {/* Result */}
         {result && (() => {
           const cfg = statusConfig[result.status] || statusConfig.active
           const Icon = cfg.icon
           return (
-            <div className={`glass rounded-2xl border animate-slide-up overflow-hidden ${result.status === 'active' ? 'border-green-500/25' : 'border-red-500/25'}`}>
-              {/* Status bar */}
-              <div className={`px-6 py-4 border-b border-gray-800 flex items-center justify-between ${result.status === 'active' ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
+            <div className={`glass rounded-2xl border animate-slide-up overflow-hidden ${cfg.border}`}>
+              <div className={`px-6 py-4 border-b border-gray-800 flex items-center justify-between ${cfg.bar}`}>
                 <div className="flex items-center gap-3">
                   <Icon size={22} className={cfg.color} />
                   <div>
@@ -156,7 +191,6 @@ export default function Verify() {
                 </span>
               </div>
 
-              {/* Details */}
               <div className="p-6 space-y-5">
                 <div>
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-widest mb-1">Recipient</p>

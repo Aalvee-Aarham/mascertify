@@ -54,6 +54,10 @@ export default function Landing() {
               className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-base font-medium text-gray-300 border border-gray-700 hover:border-gray-500 hover:text-white transition-all">
               <QrCode size={18} /> Verify a Certificate
             </Link>
+            <Link to="/discover"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-base font-medium text-gray-300 border border-gray-700 hover:border-gray-500 hover:text-white transition-all">
+              <Globe size={18} /> Discover courses
+            </Link>
           </div>
         </div>
 

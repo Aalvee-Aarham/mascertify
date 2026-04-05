@@ -8,6 +8,14 @@ const organizationSchema = new mongoose.Schema({
   description: { type: String, trim: true },
   logo: { type: String, default: '' },
   approved: { type: Boolean, default: false },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+  },
+  rejectionReason: { type: String, trim: true },
+  reviewedAt: { type: Date },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now }
 });
 

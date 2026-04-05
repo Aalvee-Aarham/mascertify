@@ -10,6 +10,7 @@ axios.defaults.baseURL = apiBaseUrl
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [organization, setOrganization] = useState(null)
+  const [organizationApproval, setOrganizationApproval] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,9 +28,11 @@ export const AuthProvider = ({ children }) => {
       const res = await axios.get('/api/auth/me')
       setUser(res.data.user)
       setOrganization(res.data.organization)
+      setOrganizationApproval(res.data.organizationApproval ?? null)
     } catch {
       localStorage.removeItem('masc_token')
       delete axios.defaults.headers.common['Authorization']
+      setOrganizationApproval(null)
     } finally {
       setLoading(false)
     }
@@ -69,17 +72,30 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization']
     setUser(null)
     setOrganization(null)
+    setOrganizationApproval(null)
   }
 
   const updateProfile = async (data) => {
     const res = await axios.put('/api/auth/profile', data)
     setUser(res.data.user)
     if (res.data.organization) setOrganization(res.data.organization)
+    setOrganizationApproval(res.data.organizationApproval ?? null)
     return res.data
   }
 
   return (
-    <AuthContext.Provider value={{ user, organization, loading, login, registerUser, registerOrg, logout, updateProfile, fetchMe }}>
+    <AuthContext.Provider value={{
+      user,
+      organization,
+      organizationApproval,
+      loading,
+      login,
+      registerUser,
+      registerOrg,
+      logout,
+      updateProfile,
+      fetchMe,
+    }}>
       {children}
     </AuthContext.Provider>
   )

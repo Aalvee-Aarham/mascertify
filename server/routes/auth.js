@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import { protect } from '../middleware/auth.js';
+import { getApprovalState } from '../utils/orgApproval.js';
 
 const router = express.Router();
 
@@ -33,7 +34,15 @@ router.post('/register/organization', async (req, res) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ success: false, message: 'Email already registered' });
     const user = await User.create({ name, email, password, role: 'organization' });
-    await Organization.create({ userId: user._id, orgName, orgType, website, description });
+    await Organization.create({
+      userId: user._id,
+      orgName,
+      orgType,
+      website,
+      description,
+      approved: false,
+      approvalStatus: 'pending',
+    });
     const token = signToken(user._id);
     res.status(201).json({ success: true, token, user });
   } catch (err) {
@@ -63,7 +72,12 @@ router.get('/me', protect, async (req, res) => {
     const org = req.user.role === 'organization'
       ? await Organization.findOne({ userId: req.user._id })
       : null;
-    res.json({ success: true, user: req.user, organization: org });
+    res.json({
+      success: true,
+      user: req.user,
+      organization: org,
+      organizationApproval: org ? getApprovalState(org) : null,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -72,17 +86,25 @@ router.get('/me', protect, async (req, res) => {
 // PUT /api/auth/profile
 router.put('/profile', protect, async (req, res) => {
   try {
-    const { name } = req.body;
-    await User.findByIdAndUpdate(req.user._id, { name });
+    const { name, headline, profilePicture } = req.body;
+    await User.findByIdAndUpdate(req.user._id, { name, headline, profilePicture });
     if (req.user.role === 'organization') {
-      const { orgName, orgType, website, description } = req.body;
-      await Organization.findOneAndUpdate({ userId: req.user._id }, { orgName, orgType, website, description });
+      const { orgName, orgType, website, description, logo } = req.body;
+      await Organization.findOneAndUpdate(
+        { userId: req.user._id },
+        { orgName, orgType, website, description, ...(logo !== undefined ? { logo: String(logo).trim() } : {}) }
+      );
     }
     const updated = await User.findById(req.user._id);
     const org = req.user.role === 'organization'
       ? await Organization.findOne({ userId: req.user._id })
       : null;
-    res.json({ success: true, user: updated, organization: org });
+    res.json({
+      success: true,
+      user: updated,
+      organization: org,
+      organizationApproval: org ? getApprovalState(org) : null,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
