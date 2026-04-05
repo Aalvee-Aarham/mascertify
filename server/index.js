@@ -11,6 +11,11 @@ import discoverRoutes from './routes/discover.js';
 import orgPublishedCourseRoutes from './routes/orgPublishedCourses.js';
 import embedRoutes from './routes/embed.js';
 import User from './models/User.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -58,6 +63,15 @@ app.use('/api/embed', embedRoutes);
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
   res.status(500).json({ success: false, message: err.message });
+});
+
+// Serve frontend in production
+const distPath = path.join(__dirname, '../client/dist');
+app.use(express.static(distPath));
+
+// Fallback for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Connect DB & start
