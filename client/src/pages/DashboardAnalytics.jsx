@@ -87,9 +87,12 @@ export default function DashboardAnalytics() {
         </div>
 
         {data && (
-          <p className="text-xs text-gray-600 mb-4">
-            Revoked certificates (current snapshot): <span className="text-gray-400">{data.revokedCertificatesTotal}</span>
-          </p>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-gray-600">Revoked certificates:</span>
+            <div className="px-3 py-1 bg-red-500/10 border border-red-500/25 rounded-lg text-red-400 font-mono text-sm font-semibold">
+              {data.revokedCertificatesTotal}
+            </div>
+          </div>
         )}
 
         <div className="glass rounded-2xl border border-gray-800 p-4 sm:p-6" style={{ minHeight: 360 }}>
